@@ -32,6 +32,7 @@ import com.denisolegovichkozlov.gps100.utils.DialogManager
 import com.denisolegovichkozlov.gps100.utils.TimeUtils
 import com.denisolegovichkozlov.gps100.utils.checkPermission
 import com.denisolegovichkozlov.gps100.utils.showToast
+import db.TrackItem
 import org.osmdroid.config.Configuration
 import org.osmdroid.library.BuildConfig
 import org.osmdroid.util.Distance
@@ -39,11 +40,13 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import java.lang.StringBuilder
 import java.util.Timer
 import java.util.TimerTask
 
 
 class MainFragment : Fragment() {
+    private var locationModel: LocationModel? = null
     private var pl: Polyline? = null
     private var isServiceRunning = false
     private var firstStart = true
@@ -102,10 +105,11 @@ class MainFragment : Fragment() {
         model.locationUpdates.observe(viewLifecycleOwner) {
             val distance = "Distance:${String.format("%.1f", it.distance)} m"
             val speed = "Speed:${String.format("%.1f", 3.6 * it.velocity)} km/h"
-            val averageSpeed = "Average speed: ${getAvarageSpeed(it.distance)} km/h"
+            val averageSpeed = "Average speed: ${getAverageSpeed(it.distance)} km/h"
             tvDistance.text = distance
             tvVelocity.text = speed
             tvAvarageVelocity.text = averageSpeed
+            locationModel = it
             updatePolyline(it.geoPointsList)
         }
     }
@@ -131,12 +135,22 @@ class MainFragment : Fragment() {
         1)
     }
 
-    private fun getAvarageSpeed(distance: Float): String {
+    private fun getAverageSpeed(distance: Float): String {
         return String.format("%.1f", (distance/((System.currentTimeMillis() - startTime)/1000f) * 3.6f))
     }
 
     private fun getCurrentTime(): String {
         return "Time: ${TimeUtils.getTime(System.currentTimeMillis() - startTime)}"
+    }
+
+    private fun geoPointsToString(list: List<GeoPoint>): String {
+
+        val sb = StringBuilder()
+        list.forEach {
+            sb.append("${it.latitude},${it.longitude}/")
+        }
+        Log.d("MyLog", "Points: ${sb}")
+        return sb.toString()
     }
 
     private fun startStopService() {
@@ -146,8 +160,26 @@ class MainFragment : Fragment() {
             activity?.stopService(Intent(activity, LocationService::class.java))
             binding.fStartStop.setImageResource(R.drawable.ic_play)
             timer?.cancel()
+            DialogManager.showSaveDialog(requireContext(),
+                getTrackItem(),
+                object : DialogManager.Listener{
+                override fun onClick() {
+                    showToast("Track saved!")
+                }
+            })
         }
         isServiceRunning = !isServiceRunning
+    }
+
+    private fun getTrackItem(): TrackItem{
+        return TrackItem(
+            null,
+            getCurrentTime(),
+            TimeUtils.getDate(),
+            String.format("%.1f", locationModel?.distance?.div(1000) ?: 0),
+            getAverageSpeed(locationModel?.distance ?: 0.0f),
+            geoPointsToString(locationModel?.geoPointsList ?: listOf()),
+        )
     }
 
     private fun checkServiceState() {
@@ -270,7 +302,7 @@ class MainFragment : Fragment() {
             .registerReceiver(receiver, locFilter)
     }
 
-    private fun addPoints(list: List<GeoPoint>) {
+    private fun addPoint(list: List<GeoPoint>) {
         pl?.addPoint(list[list.size -1])
     }
 
@@ -285,7 +317,7 @@ class MainFragment : Fragment() {
             fillPolyline(list)
             firstStart = false
         } else {
-            addPoints(list)
+            addPoint(list)
         }
     }
 
