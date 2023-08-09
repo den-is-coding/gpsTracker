@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">GPS100</string>
+    <string name="home">Home</string>
+    <string name="routes">Routes</string>
+    <string name="settings">Settings</string>
+    <string name="update_time">Update frequency</string>
+    <string name="update_time_summary">Location update frequency.</string>
+    <string name="change_color">Track color</string>
+    <string name="change_color_summary">Change color of track line on the map.</string>
+    <string name="location_disabled">Location Disabled</string>
+    <string name="location_dialog_message">Turn on GPS to use app?</string>
+</resources>
